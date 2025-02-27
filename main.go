@@ -1,7 +1,9 @@
 package main
 
-import "fmt"
+import (
+	"cli-seo-scraper/cmd"
+)
 
 func main() {
-	fmt.Println("hello world")
+	cmd.Execute()
 }

@@ -12,6 +12,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"cli-seo-scraper/cfg"
+	"cli-seo-scraper/colors"
 )
 
 // initCmd represents the init command
@@ -30,18 +31,18 @@ func handleInitConfig(cmd *cobra.Command, args []string) {
 
 	var configName string
 	for {
-		cmd.Print("Enter the name for your config (example: config.json): ")
+		cmd.Print(colors.Bold("Enter the name for your config (example: config.json): "))
 		configName, _ = reader.ReadString('\n')
 		configName = strings.TrimSpace(configName)
 
 		if strings.HasSuffix(configName, ".json") {
 			break
 		}
-		cmd.Println("Config name provided is not a .json file")
+		cmd.Println(colors.Error("Config name provided is not a .json file"))
 	}
 	var outputFilename string
 	for {
-		cmd.Print("Enter the name for your output file (example: output.csv): ")
+		cmd.Print(colors.Bold("Enter the name for your output file (example: output.csv): "))
 		outputFilename, _ = reader.ReadString('\n')
 		outputFilename = strings.TrimSpace(outputFilename)
 
@@ -49,13 +50,13 @@ func handleInitConfig(cmd *cobra.Command, args []string) {
 			break
 		}
 
-		cmd.Println("Output file name provided is not a .csv file")
+		cmd.Println(colors.Error("Output file name provided is not a .csv file"))
 	}
 
 	websites := []string{}
-	cmd.Println("Great! Now let's add some websites to scrape (example: https://google.com)")
+	cmd.Println(colors.Info("Great! Now let's add some websites to scrape (example: https://google.com)"))
 	for {
-		cmd.Print("Enter website URL (or 'done' to finish):")
+		cmd.Print(colors.Bold("Enter website URL (or 'done' to finish):"))
 		website, _ := reader.ReadString('\n')
 		website = strings.TrimSpace(website)
 
@@ -63,7 +64,7 @@ func handleInitConfig(cmd *cobra.Command, args []string) {
 			break
 		}
 		if !strings.Contains(website, "http") {
-			cmd.Println("Please add http:// or https://")
+			cmd.Println(colors.Error("Please add http:// or https://"))
 			continue
 		}
 
@@ -72,7 +73,7 @@ func handleInitConfig(cmd *cobra.Command, args []string) {
 	appConfig := cfg.NewAppConfig(websites, configName, outputFilename)
 	cfgFile, err := os.Create(appConfig.ConfigFilename)
 	if err != nil {
-		cmd.Println("Could not create config with name", appConfig.ConfigFilename)
+		cmd.Println(colors.Error("Could not create config with name", appConfig.ConfigFilename))
 		return
 	}
 	defer cfgFile.Close()
@@ -81,9 +82,9 @@ func handleInitConfig(cmd *cobra.Command, args []string) {
 	encoder.SetIndent("", "    ")
 	err = encoder.Encode(appConfig)
 	if err != nil {
-		cmd.Println("Could not write to config file:", err)
+		cmd.Println(colors.Error("Could not write to config file:", err))
 		return
 	}
 
-	cmd.Println("Configuration saved successfully to", appConfig.ConfigFilename)
+	cmd.Println(colors.Success("Configuration saved successfully to ", appConfig.ConfigFilename))
 }

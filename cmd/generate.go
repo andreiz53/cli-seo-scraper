@@ -7,6 +7,7 @@ import (
 	"encoding/csv"
 	"encoding/json"
 	"os"
+	"time"
 
 	"github.com/spf13/cobra"
 
@@ -60,7 +61,9 @@ func generateStats(cmd *cobra.Command, args []string) {
 	}
 	c := scraper.NewCollector()
 	scr := scraper.NewScraper(c, scraperCfg)
+	t := time.Now()
 	settings := scr.ScrapeSEO()
+	endT := time.Since(t)
 	for _, s := range settings {
 		err = writer.Write(s.ToCSVLine())
 		if err != nil {
@@ -70,5 +73,5 @@ func generateStats(cmd *cobra.Command, args []string) {
 		}
 	}
 	writer.Flush()
-	cmd.Println(colors.Success("Websites scraped successfully."))
+	cmd.Println(colors.Success("Websites scraped successfully in ", endT))
 }

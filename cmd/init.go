@@ -11,22 +11,22 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"cli-seo-scraper/cfg"
 	"cli-seo-scraper/colors"
+	"cli-seo-scraper/config"
+	"cli-seo-scraper/scraper"
 )
 
-// initCmd represents the init command
 var initCmd = &cobra.Command{
 	Use:   "init",
 	Short: "Initialize your config file",
 	Long:  `The init command starts the process of creating your config file.`,
-	Run:   handleInitConfig}
+	Run:   handleInitCmd}
 
 func init() {
 	rootCmd.AddCommand(initCmd)
 }
 
-func handleInitConfig(cmd *cobra.Command, args []string) {
+func handleInitCmd(cmd *cobra.Command, args []string) {
 	reader := bufio.NewReader(os.Stdin)
 
 	var configName string
@@ -56,7 +56,7 @@ func handleInitConfig(cmd *cobra.Command, args []string) {
 	websites := []string{}
 	cmd.Println(colors.Info("Great! Now let's add some websites to scrape (example: https://google.com)"))
 	for {
-		cmd.Print(colors.Bold("Enter website URL (or 'done' to finish):"))
+		cmd.Print(colors.Bold("Enter website URL (or 'done' to finish): "))
 		website, _ := reader.ReadString('\n')
 		website = strings.TrimSpace(website)
 
@@ -70,21 +70,28 @@ func handleInitConfig(cmd *cobra.Command, args []string) {
 
 		websites = append(websites, website)
 	}
-	appConfig := cfg.NewAppConfig(websites, configName, outputFilename)
-	cfgFile, err := os.Create(appConfig.ConfigFilename)
+	scraperConfig := scraper.NewScraperConfig(websites, outputFilename)
+	cfgFile, err := os.Create(configName)
 	if err != nil {
-		cmd.Println(colors.Error("Could not create config with name", appConfig.ConfigFilename))
+		cmd.Println(colors.Error("Could not create config with name", configName))
 		return
 	}
 	defer cfgFile.Close()
 
 	encoder := json.NewEncoder(cfgFile)
 	encoder.SetIndent("", "    ")
-	err = encoder.Encode(appConfig)
+	err = encoder.Encode(scraperConfig)
 	if err != nil {
 		cmd.Println(colors.Error("Could not write to config file:", err))
 		return
 	}
 
-	cmd.Println(colors.Success("Configuration saved successfully to ", appConfig.ConfigFilename))
+	cmd.Println(colors.Success("Configuration saved successfully to ", configName))
+	// save the the config filename into some preset file
+	appConfig := config.NewAppConfig(configName)
+	err = appConfig.GenerateConfig()
+	if err != nil {
+		cmd.Println(colors.Error("Could not generate application config file"))
+		cmd.Println(err)
+	}
 }

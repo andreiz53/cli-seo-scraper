@@ -5,68 +5,70 @@ package cmd
 
 import (
 	"encoding/csv"
+	"encoding/json"
 	"os"
 
 	"github.com/spf13/cobra"
 
-	"cli-seo-scraper/cfg"
+	"cli-seo-scraper/colors"
+	"cli-seo-scraper/config"
 	"cli-seo-scraper/scraper"
 	"cli-seo-scraper/seo"
 )
 
 var generateCmd = &cobra.Command{
 	Use:   "generate",
-	Short: "Generate SEO stats based on the given config.",
+	Short: "Generate SEO stats based on the generated config.",
 	Long:  ``,
 	Run:   generateStats}
 
 func init() {
 	rootCmd.AddCommand(generateCmd)
-
-	generateCmd.Flags().StringP("config", "c", "cli-seo-scraper-config.json", "Path to the config file. Defaults to cli-seo-scraper-config.json")
-	generateCmd.Flags().StringP("output", "o", "cli-seo-scraper-output.csv", "Output file for SEO stats. Defaults to cli-seo-scraper-output.csv")
-
 }
 
 func generateStats(cmd *cobra.Command, args []string) {
-	configPath, err := cmd.Flags().GetString("config")
+	cfgPath, err := config.GetAppConfig()
 	if err != nil {
-		cmd.PrintErr("Invalid value for config flag \n")
+		cmd.Println(colors.Warning("No config file found. Please generate one using the 'init' command"))
 		return
 	}
-	// TODO: if the user does not have a config, make him create one
-	outputPath, err := cmd.Flags().GetString("output")
+	cfgFile, err := os.Open(cfgPath)
 	if err != nil {
-		cmd.PrintErr("Invalid value for output flag \n")
+		cmd.Println(colors.Error("Could not open the application config file"))
+		cmd.Println(err)
 		return
 	}
-	config, err := cfg.LoadAppConfig(configPath)
+	var scraperCfg scraper.ScraperConfig
+	err = json.NewDecoder(cfgFile).Decode(&scraperCfg)
 	if err != nil {
-		cmd.PrintErr("Could not load config file from given path\n")
+		cmd.Println(colors.Error("Scraper config file has invalid format"))
+		cmd.Println(err)
 		return
 	}
-	_ = outputPath
-	file, err := os.Create(outputPath)
+	outFile, err := os.Create(scraperCfg.OutputFilename)
 	if err != nil {
-		cmd.PrintErr("Could not create output file\n")
+		cmd.Println(colors.Error("Could not create output file"))
+		cmd.Println(err)
 		return
 	}
-	defer file.Close()
-	w := csv.NewWriter(file)
-	err = w.Write(seo.CSVHeader())
+	writer := csv.NewWriter(outFile)
+	err = writer.Write(seo.CSVHeader())
 	if err != nil {
-		cmd.PrintErr("Could not write to output file \n")
+		cmd.Println(colors.Error("Could not write into the output file"))
+		cmd.Println(err)
 		return
 	}
-
-	scr := scraper.NewScraper()
-	for _, website := range config.Websites {
-		settings := scr.WithSEOSettings(website)
-		err = w.Write(settings.ToCSVLine())
+	c := scraper.NewCollector()
+	scr := scraper.NewScraper(c, scraperCfg)
+	settings := scr.ScrapeSEO()
+	for _, s := range settings {
+		err = writer.Write(s.ToCSVLine())
 		if err != nil {
-			cmd.PrintErr("Could not write SEO settings to output file \n")
+			cmd.Println(colors.Error("Could not write line into output file"))
+			cmd.Println(err)
 			return
 		}
 	}
-	w.Flush()
+	writer.Flush()
+	cmd.Println(colors.Success("Websites scraped successfully."))
 }

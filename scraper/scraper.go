@@ -2,6 +2,8 @@ package scraper
 
 import (
 	"net/http"
+	"slices"
+	"strings"
 	"sync"
 
 	"github.com/gocolly/colly/v2"
@@ -20,15 +22,13 @@ type ScraperConfig struct {
 	OutputFilename string   `mapstructure:"output_filename" json:"output_filename"`
 }
 
-func NewCollector() *colly.Collector {
+func NewCollector(opts ...colly.CollectorOption) *colly.Collector {
 	fakeBrowser := req.DefaultClient().ImpersonateChrome()
-	c := colly.NewCollector(
-		colly.UserAgent(fakeBrowser.Headers.Get("user-agent")),
-	)
+	options := slices.Concat([]colly.CollectorOption{colly.UserAgent(fakeBrowser.Headers.Get("user-agent"))}, opts)
+	c := colly.NewCollector(options...)
 	c.SetClient(&http.Client{
 		Transport: fakeBrowser.Transport,
 	})
-
 	return c
 }
 
@@ -47,9 +47,9 @@ func NewScraperConfig(websites []string, output string) *ScraperConfig {
 }
 
 func (s *Scraper) ScrapeSEO() []seo.SEOSettings {
-	var seoSettings []seo.SEOSettings
-	var mu sync.Mutex
 	var wg sync.WaitGroup
+	results := make(chan seo.SEOSettings, len(s.Config.Websites))
+
 	for _, url := range s.Config.Websites {
 		wg.Add(1)
 		go func(url string) {
@@ -100,13 +100,62 @@ func (s *Scraper) ScrapeSEO() []seo.SEOSettings {
 			})
 
 			c.OnScraped(func(r *colly.Response) {
-				mu.Lock()
-				seoSettings = append(seoSettings, settings)
-				mu.Unlock()
+				results <- settings
 			})
+
 			c.Visit(url)
 		}(url)
 	}
-	wg.Wait()
+
+	go func() {
+		wg.Wait()
+		close(results)
+	}()
+
+	var seoSettings []seo.SEOSettings
+	for result := range results {
+		seoSettings = append(seoSettings, result)
+	}
+
 	return seoSettings
+}
+
+func (s *Scraper) ScrapeLinks() []seo.SEOLinks {
+	brokenLinks := []seo.SEOLinks{}
+	var wg sync.WaitGroup
+	results := make(chan seo.SEOLinks, len(s.Config.Websites))
+
+	for _, website := range s.Config.Websites {
+		wg.Add(1)
+		go func(website string) {
+			defer wg.Done()
+			c := NewCollector(colly.Async(), colly.MaxDepth(2))
+			c.Limit(&colly.LimitRule{DomainGlob: "*", Parallelism: 2})
+			links := seo.SEOLinks{}
+
+			c.OnHTML("a[href]", func(h *colly.HTMLElement) {
+				h.Request.Visit(h.Attr("href"))
+			})
+			c.OnError(func(r *colly.Response, err error) {
+				if strings.HasPrefix(r.Request.URL.String(), "http") {
+					links.Links = append(links.Links, seo.SEOLink{
+						URL:        r.Request.URL.String(),
+						StatusCode: r.StatusCode,
+					})
+				}
+			})
+			c.Visit(website)
+			c.Wait()
+			results <- links
+		}(website)
+	}
+	go func() {
+		wg.Wait()
+		close(results)
+	}()
+
+	for result := range results {
+		brokenLinks = append(brokenLinks, result)
+	}
+	return brokenLinks
 }

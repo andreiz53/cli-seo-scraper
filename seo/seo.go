@@ -54,3 +54,12 @@ func (s *SEOSettings) ToCSVLine() []string {
 		s.JSONLD,
 	}
 }
+
+type SEOLinks struct {
+	Links []SEOLink
+}
+
+type SEOLink struct {
+	URL        string
+	StatusCode int
+}

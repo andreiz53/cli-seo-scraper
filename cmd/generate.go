@@ -1,5 +1,5 @@
 /*
-Copyright © 2025 NAME HERE <EMAIL ADDRESS>
+Copyright © 2025 Andrei Zamfira <andrei.zamfira53@gmail.com>
 */
 package cmd
 
@@ -34,6 +34,7 @@ func generateStats(cmd *cobra.Command, args []string) {
 		cmd.PrintErr("Invalid value for config flag \n")
 		return
 	}
+	// TODO: if the user does not have a config, make him create one
 	outputPath, err := cmd.Flags().GetString("output")
 	if err != nil {
 		cmd.PrintErr("Invalid value for output flag \n")

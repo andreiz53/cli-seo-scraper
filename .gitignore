@@ -1,2 +1,2 @@
-config.json
-cli-seo-scraper-output.csv
+*.json
+*.csv

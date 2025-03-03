@@ -1,5 +1,5 @@
 /*
-Copyright © 2025 NAME HERE <EMAIL ADDRESS>
+Copyright © 2025 Andrei Zamfira <andrei.zamfira53@gmail.com>
 */
 package cmd
 
@@ -40,13 +40,26 @@ func handleInitCmd(cmd *cobra.Command, args []string) {
 		}
 		cmd.Println(colors.Error("Config name provided is not a .json file"))
 	}
-	var outputFilename string
+	var outputMETAs string
 	for {
-		cmd.Print(colors.Bold("Enter the name for your output file (example: output.csv): "))
-		outputFilename, _ = reader.ReadString('\n')
-		outputFilename = strings.TrimSpace(outputFilename)
+		cmd.Print(colors.Bold("Enter the name for your output file for METAs(example: output-metas.csv): "))
+		outputMETAs, _ = reader.ReadString('\n')
+		outputMETAs = strings.TrimSpace(outputMETAs)
 
-		if strings.HasSuffix(outputFilename, ".csv") {
+		if strings.HasSuffix(outputMETAs, ".csv") {
+			break
+		}
+
+		cmd.Println(colors.Error("Output file name provided is not a .csv file"))
+	}
+
+	var outputLinks string
+	for {
+		cmd.Print(colors.Bold("Enter the name for your output file for broken links(example: output-links.csv): "))
+		outputLinks, _ = reader.ReadString('\n')
+		outputLinks = strings.TrimSpace(outputLinks)
+
+		if strings.HasSuffix(outputLinks, ".csv") {
 			break
 		}
 
@@ -70,7 +83,7 @@ func handleInitCmd(cmd *cobra.Command, args []string) {
 
 		websites = append(websites, website)
 	}
-	scraperConfig := scraper.NewScraperConfig(websites, outputFilename)
+	scraperConfig := scraper.NewScraperConfig(websites, outputMETAs, outputLinks)
 	cfgFile, err := os.Create(configName)
 	if err != nil {
 		cmd.Println(colors.Error("Could not create config with name", configName))
@@ -87,7 +100,6 @@ func handleInitCmd(cmd *cobra.Command, args []string) {
 	}
 
 	cmd.Println(colors.Success("Configuration saved successfully to ", configName))
-	// save the the config filename into some preset file
 	appConfig := config.NewAppConfig(configName)
 	err = appConfig.GenerateConfig()
 	if err != nil {

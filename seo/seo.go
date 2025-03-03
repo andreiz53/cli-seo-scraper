@@ -1,6 +1,8 @@
 package seo
 
-type SEOSettings struct {
+import "fmt"
+
+type SEOMetas struct {
 	Title         string
 	Robots        string
 	Description   string
@@ -17,7 +19,7 @@ type SEOSettings struct {
 	JSONLD        string
 }
 
-func CSVHeader() []string {
+func CSVHeaderMETAs() []string {
 	return []string{
 		"title",
 		"robots",
@@ -36,7 +38,7 @@ func CSVHeader() []string {
 	}
 }
 
-func (s *SEOSettings) ToCSVLine() []string {
+func (s *SEOMetas) ToCSVLine() []string {
 	return []string{
 		s.Title,
 		s.Robots,
@@ -62,4 +64,18 @@ type SEOLinks struct {
 type SEOLink struct {
 	URL        string
 	StatusCode int
+}
+
+func CSVHeaderLinks() []string {
+	return []string{
+		"status_code",
+		"url",
+	}
+}
+
+func (l *SEOLink) ToCSVLine() []string {
+	return []string{
+		fmt.Sprint(l.StatusCode),
+		l.URL,
+	}
 }

@@ -19,7 +19,8 @@ type Scraper struct {
 
 type ScraperConfig struct {
 	Websites       []string `mapstructure:"websites" json:"websites"`
-	OutputFilename string   `mapstructure:"output_filename" json:"output_filename"`
+	OutputSEOMetas string   `mapstructure:"output_metas" json:"output_metas"`
+	OutputSEOLinks string   `mapstructure:"output_links" json:"output_links"`
 }
 
 func NewCollector(opts ...colly.CollectorOption) *colly.Collector {
@@ -39,23 +40,24 @@ func NewScraper(coll *colly.Collector, cfg ScraperConfig) *Scraper {
 	}
 }
 
-func NewScraperConfig(websites []string, output string) *ScraperConfig {
+func NewScraperConfig(websites []string, outputMETAs string, outputLinks string) *ScraperConfig {
 	return &ScraperConfig{
 		Websites:       websites,
-		OutputFilename: output,
+		OutputSEOMetas: outputMETAs,
+		OutputSEOLinks: outputLinks,
 	}
 }
 
-func (s *Scraper) ScrapeSEO() []seo.SEOSettings {
+func (s *Scraper) ScrapeSEO() []seo.SEOMetas {
 	var wg sync.WaitGroup
-	results := make(chan seo.SEOSettings, len(s.Config.Websites))
+	results := make(chan seo.SEOMetas, len(s.Config.Websites))
 
 	for _, url := range s.Config.Websites {
 		wg.Add(1)
 		go func(url string) {
 			defer wg.Done()
 			c := NewCollector()
-			settings := seo.SEOSettings{}
+			settings := seo.SEOMetas{}
 			c.OnHTML(`head title`, func(h *colly.HTMLElement) {
 				settings.Title = h.Text
 			})
@@ -112,7 +114,7 @@ func (s *Scraper) ScrapeSEO() []seo.SEOSettings {
 		close(results)
 	}()
 
-	var seoSettings []seo.SEOSettings
+	var seoSettings []seo.SEOMetas
 	for result := range results {
 		seoSettings = append(seoSettings, result)
 	}

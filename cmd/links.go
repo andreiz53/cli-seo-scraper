@@ -4,8 +4,8 @@ Copyright © 2025 NAME HERE <EMAIL ADDRESS>
 package cmd
 
 import (
+	"encoding/csv"
 	"encoding/json"
-	"fmt"
 	"os"
 	"time"
 
@@ -14,6 +14,7 @@ import (
 	"cli-seo-scraper/colors"
 	"cli-seo-scraper/config"
 	"cli-seo-scraper/scraper"
+	"cli-seo-scraper/seo"
 )
 
 var linksCmd = &cobra.Command{
@@ -46,11 +47,39 @@ func handleLinksCmd(cmd *cobra.Command, args []string) {
 		cmd.Println(err)
 		return
 	}
+
+	outFile, err := os.Create(scraperCfg.OutputSEOMetas)
+	if err != nil {
+		cmd.Println(colors.Error("Could not create output file"))
+		cmd.Println(err)
+		return
+	}
+
+	writer := csv.NewWriter(outFile)
+	err = writer.Write(seo.CSVHeaderLinks())
+	if err != nil {
+		cmd.Println(colors.Error("Could not write into the output file"))
+		cmd.Println(err)
+		return
+	}
+
 	c := scraper.NewCollector()
 	scr := scraper.NewScraper(c, scraperCfg)
 	t := time.Now()
 	brokenLinks := scr.ScrapeLinks()
 	endT := time.Since(t)
-	fmt.Println("got broken links", brokenLinks)
-	fmt.Println("Duration: ", endT)
+
+	for _, websiteLinks := range brokenLinks {
+		for _, link := range websiteLinks.Links {
+			err = writer.Write(link.ToCSVLine())
+			if err != nil {
+				cmd.Println(colors.Error("Could not write into output file"))
+				cmd.Println(err)
+				return
+			}
+		}
+	}
+
+	writer.Flush()
+	cmd.Println(colors.Success("Broken links scraped successfully in ", endT))
 }
